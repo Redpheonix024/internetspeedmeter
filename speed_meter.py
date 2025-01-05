@@ -2,7 +2,7 @@ import sys
 import psutil
 import time
 from PyQt5.QtWidgets import (QApplication, QWidget, QLabel, QVBoxLayout, 
-                            QPushButton, QDialog, QComboBox, QColorDialog, QHBoxLayout)
+                            QPushButton, QDialog, QComboBox, QColorDialog, QHBoxLayout,QMenu,QSizePolicy,QLayout)
 from PyQt5.QtCore import QTimer, Qt, QThread, pyqtSignal, QPoint
 from PyQt5.QtGui import QFont, QMouseEvent
 from speed_calculator import SpeedCalculator
@@ -16,6 +16,16 @@ class DraggableWidget(QWidget):
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
 
+        self.settings_button = QPushButton(' ', self)
+        self.settings_button.setFixedSize(30, 30)
+        self.settings_button.move(self.width() - 35, 5)
+        self.settings_button.clicked.connect(self.open_settings)
+
+        self.close_button = QPushButton(' ', self)
+        self.close_button.setFixedSize(30, 30)
+        self.close_button.move(self.width() - 65, 5)
+        self.close_button.clicked.connect(self.close)
+
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.LeftButton:
             self.dragging = True
@@ -28,6 +38,17 @@ class DraggableWidget(QWidget):
     def mouseReleaseEvent(self, event: QMouseEvent):
         if event.button() == Qt.LeftButton:
             self.dragging = False
+
+    def contextMenuEvent(self, event):
+        if event.reason() == event.Mouse:
+            menu = QMenu(self)
+            menu.addAction('Settings').triggered.connect(self.open_settings)
+            menu.addAction('Close').triggered.connect(self.close)
+            menu.exec(event.globalPos())
+
+    def open_settings(self):
+        dialog = SettingsDialog(self)
+        dialog.exec_()
 
 class SpeedThread(QThread):
     speed_signal = pyqtSignal(float, float, float)
@@ -202,20 +223,22 @@ class SpeedMeter(DraggableWidget):
         self.title_label = QLabel('Internet Speed Meter')
         self.download_label = QLabel('↓ 0 ' + self.speed_calculator.unit)
         self.upload_label = QLabel('↑ 0 ' + self.speed_calculator.unit)
-        self.settings_button = QPushButton('⚙')
-        self.close_button = QPushButton('×')
+        # self.settings_button = QPushButton('⚙')
+        # self.close_button = QPushButton('×')
         
         self.initUI()
         self.start_measuring()
 
     def initUI(self):
         self.setWindowTitle('Internet Speed Meter')
-        self.setFixedSize(400, 100)
+        self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        self.setMinimumSize(200, 80) 
 
         # Main layout
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
-
+        main_layout.setSizeConstraint(QLayout.SetMinAndMaxSize)  # Auto-adjust to content
+        
         # Create main widget with background
         main_widget = QWidget()
         main_widget.setObjectName("mainWidget")
