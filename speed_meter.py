@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (QApplication, QWidget, QLabel, QVBoxLayout,
 from PyQt5.QtCore import QTimer, Qt, QThread, pyqtSignal, QPoint
 from PyQt5.QtGui import QFont, QMouseEvent
 from speed_calculator import SpeedCalculator
-from datetime import datetime
+
 
 class DraggableWidget(QWidget):
     def __init__(self):
@@ -200,8 +200,8 @@ class SpeedMeter(DraggableWidget):
         
         # Initialize all UI elements
         self.title_label = QLabel('Internet Speed Meter')
-        self.download_label = QLabel(f'Current Download Speed: 0 {self.speed_calculator.unit}')
-        self.upload_label = QLabel(f'Current Upload Speed: 0 {self.speed_calculator.unit}')
+        self.download_label = QLabel('↓ 0 ' + self.speed_calculator.unit)
+        self.upload_label = QLabel('↑ 0 ' + self.speed_calculator.unit)
         self.settings_button = QPushButton('⚙')
         self.close_button = QPushButton('×')
         
@@ -281,11 +281,14 @@ class SpeedMeter(DraggableWidget):
         self.upload_label.setStyleSheet(style['speed'])
 
     def update_unit_labels(self):
-        current_download = self.download_label.text().split(':')[1].strip().split()[0]
-        current_upload = self.upload_label.text().split(':')[1].strip().split()[0]
+        try:
+            current_download = float(self.download_label.text().split(':')[1].strip().split()[0])
+            current_upload = float(self.upload_label.text().split(':')[1].strip().split()[0])
+        except (ValueError, IndexError):
+            return
         
-        self.download_label.setText(f'Current Download Speed: {current_download} {self.speed_calculator.unit}')
-        self.upload_label.setText(f'Current Upload Speed: {current_upload} {self.speed_calculator.unit}')
+        self.download_label.setText(f'↓ {current_download:.2f} {self.speed_calculator.unit}')
+        self.upload_label.setText(f'↑ {current_upload:.2f} {self.speed_calculator.unit}')
 
     def start_measuring(self):
         if self.speed_thread is None or not self.speed_thread.isRunning():
@@ -295,10 +298,10 @@ class SpeedMeter(DraggableWidget):
 
     def update_speed_labels(self, download_speed, upload_speed, elapsed_time):
         self.download_label.setText(
-            f'Current Download Speed: {download_speed:.2f} {self.speed_calculator.unit}'
+            f'↓ {download_speed:.2f} {self.speed_calculator.unit}'
         )
         self.upload_label.setText(
-            f'Current Upload Speed: {upload_speed:.2f} {self.speed_calculator.unit}'
+            f'↑ {upload_speed:.2f} {self.speed_calculator.unit}'
         )
 
     def open_settings(self):
@@ -313,9 +316,6 @@ class SpeedMeter(DraggableWidget):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    current_time = datetime.now().isoformat()
-    print(f"The current local time is: {current_time}")
-    
     meter = SpeedMeter()
     meter.show()
     sys.exit(app.exec_())
