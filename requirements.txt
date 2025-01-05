@@ -1,1 +1,4 @@
 speedtest-cli
+PyQt5
+psutil
+
