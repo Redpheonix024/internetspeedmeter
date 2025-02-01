@@ -1,7 +1,6 @@
 class SpeedCalculator:
-    def __init__(self, unit='kBps'):
+    def __init__(self, unit='Mbps'):  # Changed default to Mbps as it's more common
         self.unit = unit
-        # Define conversion factors from bytes per second
         self.conversion_factors = {
             'MBps': 1_048_576,    # 1024 * 1024 (bytes to megabytes)
             'kBps': 1_024,        # 1024 (bytes to kilobytes)
@@ -36,4 +35,11 @@ class SpeedCalculator:
         """
         Calculate speed from a bytes difference using the current unit.
         """
-        return bytes_diff / self.get_conversion_factor()
+        try:
+            if bytes_diff < 0:  # Handle counter reset
+                return 0
+            speed = bytes_diff / self.get_conversion_factor()
+            return max(0, speed)  # Ensure non-negative speed
+        except Exception as e:
+            print(f"Error calculating speed: {e}")
+            return 0
