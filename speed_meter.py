@@ -6,12 +6,11 @@ from logging.handlers import RotatingFileHandler
 import os
 from PyQt5.QtWidgets import (QApplication, QWidget, QLabel, QVBoxLayout, 
                             QPushButton, QDialog, QComboBox, QColorDialog, QHBoxLayout,
-                            QMenu, QSizePolicy, QLayout, QSystemTrayIcon, QStyle, )
-from PyQt5.QtCore import QTimer, Qt, QThread, pyqtSignal, QPoint, QSettings, QEvent
+                            QMenu, QSizePolicy, QLayout, QSystemTrayIcon, QStyle)
+from PyQt5.QtCore import QTimer, Qt, QThread, pyqtSignal, QPoint, QSettings
 from PyQt5.QtGui import QFont, QMouseEvent
 from speed_calculator import SpeedCalculator
 import winreg
-import threading
 
 # Setup logging
 def setup_logging():
@@ -332,12 +331,7 @@ class SpeedMeter(DraggableWidget):
             self.load_position()
 
             # Ensure window stays on top even after losing focus
-            self.setWindowFlags(
-                Qt.FramelessWindowHint | 
-                Qt.WindowStaysOnTopHint | 
-                Qt.Tool |
-                Qt.SubWindow  # Add SubWindow flag
-            )
+            self.set_always_on_top()
             self.show()
             self.raise_()
             self.activateWindow()
@@ -350,9 +344,27 @@ class SpeedMeter(DraggableWidget):
             self.app_name = "InternetSpeedMeter"
             self.load_startup_setting()
             
+            # Add timer to periodically check and ensure window stays on top
+            self.always_on_top_timer = QTimer(self)
+            self.always_on_top_timer.timeout.connect(self.ensure_on_top)
+            self.always_on_top_timer.start(1000)  # Check every second
+            
         except Exception as e:
             logger.error(f"Error initializing SpeedMeter: {str(e)}")
             raise
+
+    def ensure_on_top(self):
+        """Periodically called to ensure window stays on top"""
+        if self.isVisible():
+            self.setWindowFlags(
+                Qt.FramelessWindowHint | 
+                Qt.WindowStaysOnTopHint | 
+                Qt.Tool |
+                Qt.SubWindow
+            )
+            self.show()
+            self.raise_()
+            self.activateWindow()
 
     def initUI(self):
         self.setWindowTitle('Internet Speed Meter')
@@ -382,14 +394,6 @@ class SpeedMeter(DraggableWidget):
         # Apply theme and styles
         self.apply_theme(self.current_theme)
         self.set_text_size(self.current_font_size)
-
-
-    def keep_on_top(self):
-        while True:
-            self.raise_()
-            self.activateWindow()
-            time.sleep(0.1)  # adjust the sleep time as needed
-
 
     def apply_theme(self, theme_name, custom_colors=None):
         self.current_theme = theme_name
@@ -507,6 +511,8 @@ class SpeedMeter(DraggableWidget):
 
     def closeEvent(self, event):
         try:
+            # Stop the always-on-top timer before closing
+            self.always_on_top_timer.stop()
             # Save settings before closing
             self.settings.setValue('font_size', self.current_font_size)
             self.settings.setValue('opacity', self.opacity)
@@ -523,8 +529,9 @@ class SpeedMeter(DraggableWidget):
                     self.tray_icon.hide()
                 event.accept()
             else:
-                # Just minimize to tray
+                # Just minimize to tray and ensure it stays on top when shown again
                 self.hide()
+                self.set_always_on_top()
                 event.ignore()
         except Exception as e:
             logger.error(f"Error during application close: {str(e)}")
@@ -751,25 +758,34 @@ class SpeedMeter(DraggableWidget):
             Qt.FramelessWindowHint | 
             Qt.WindowStaysOnTopHint | 
             Qt.Tool |
-            Qt.SubWindow  # Add SubWindow flag
+            Qt.SubWindow
         )
         super().show()
-        # threading.Thread(target=self.keep_on_top).start()
         self.raise_()
         self.activateWindow()
+
+    def set_always_on_top(self):
+        """Ensure window is always on top"""
+        self.setWindowFlags(
+            Qt.FramelessWindowHint | 
+            Qt.WindowStaysOnTopHint | 
+            Qt.Tool |
+            Qt.SubWindow
+        )
+        if self.isVisible():
+            super().show()  # Use super().show() to avoid recursion
+            self.raise_()
+            self.activateWindow()
 
     def show_and_raise(self):
         """Show window and ensure it's on top"""
-        self.show()
+        self.show()  # Now just calls show() which already handles staying on top
+
+    def showEvent(self, event):
+        """Override show event"""
+        super().showEvent(event)
         self.raise_()
         self.activateWindow()
-
-    def changeEvent(self, event):
-        """Override change event to ensure window stays on top"""
-        if event.type() == QEvent.WindowStateChange:
-            self.raise_()
-            self.activateWindow()
-        super().changeEvent(event)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
