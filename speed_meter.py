@@ -342,6 +342,10 @@ class SpeedMeter(DraggableWidget):
             # Add startup management
             self.startup_registry_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
             self.app_name = "InternetSpeedMeter"
+            
+            # Enable autostart by default if not already set
+            if not self.settings.contains('auto_start'):
+                self.toggle_startup(True)  # Enable autostart
             self.load_startup_setting()
             
             # Add timer to periodically check and ensure window stays on top
@@ -673,8 +677,17 @@ class SpeedMeter(DraggableWidget):
     def load_startup_setting(self):
         """Load startup setting from registry"""
         try:
-            self.auto_start = self.is_in_startup()
-            self.settings.setValue('auto_start', self.auto_start)
+            # If auto_start setting doesn't exist, create it as True
+            if not self.settings.contains('auto_start'):
+                self.settings.setValue('auto_start', True)
+                self.add_to_startup()  # Actually add to startup
+                self.auto_start = True
+            else:
+                self.auto_start = self.settings.value('auto_start', True, type=bool)
+                if self.auto_start and not self.is_in_startup():
+                    self.add_to_startup()  # Ensure it's in startup if it should be
+                elif not self.auto_start and self.is_in_startup():
+                    self.remove_from_startup()  # Remove if it shouldn't be
         except Exception as e:
             logger.error(f"Error loading startup setting: {e}")
             self.auto_start = False
